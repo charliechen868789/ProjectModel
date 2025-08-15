@@ -1,13 +1,22 @@
-cmake_minimum_required(VERSION 3.10)
-project(EventDrivenSystem)
+# 项目根目录 CMakeLists.txt
+cmake_minimum_required(VERSION 3.16)
+project(EventDrivenTemplate VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(Common)
-add_subdirectory(VirtualSensor)
-add_subdirectory(Algorithm)
-add_subdirectory(WebApp)
-add_subdirectory(Gui)
+# 设置输出目录
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# 查找依赖
+find_package(Protobuf REQUIRED)
+find_package(Threads REQUIRED)
+
+# 包含子目录
+add_subdirectory(libs/EventBus)
+add_subdirectory(libs/AppTemplate)
+add_subdirectory(apps/VirtualSensor)
+add_subdirectory(apps/Algorithm)
+add_subdirectory(apps/GUI)
+add_subdirectory(apps/WebApp)

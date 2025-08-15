@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message AlgorithmResult {
+    string result_id = 1;
+    double comfort_index = 2;
+    string alert_level = 3;
+    string recommendation = 4;
+    int64 timestamp = 5;
+    double avg_temperature = 6;
+    double avg_humidity = 7;
+    double avg_pressure = 8;
+}

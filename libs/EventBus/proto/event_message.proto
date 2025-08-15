@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+message EventMessage {
+    string event_type = 1;
+    string data = 2;
+    int64 timestamp = 3;
+    string source = 4;
+}
