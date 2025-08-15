@@ -1,21 +1,35 @@
-#include "EventNode.h"
+#include "AppTemplate.h"
 #include <iostream>
+#include <thread>
+#include <chrono>
+
+class VirtualSensorApp : public AppTemplate {
+public:
+    VirtualSensorApp() : AppTemplate("VirtualSensor", 5000) {}
+
+    void startGenerating() {
+        std::thread([this](){
+            int count = 0;
+            while(true){
+                Event e{"raw_data", "data_" + std::to_string(count++)};
+                node.broadcast(e);  // 子类内部访问 protected node
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }).detach();
+    }
+
+protected:
+    void handleEvent(const Event& e) override {
+        std::cout << "[VirtualSensor] 收到事件: " << e.type << " -> " << e.data << "\n";
+    }
+};
 
 int main() {
-    EventNode node(5001); // 监听端口5001
+    VirtualSensorApp sensor;
+    sensor.addConnection("127.0.0.1", 5001); // Algorithm
+    sensor.addConnection("127.0.0.1", 5002); // GUI
+    sensor.addConnection("127.0.0.1", 5003); // WebApp
 
-    node.onEvent("sensor_data", [&node](const Event& e){
-        int val = std::stoi(e.data);
-        std::cout << "[Algorithm] 收到数据: " << val << "\n";
-        if (val > 80) {
-            node.broadcast({"alert", "值超过80!"});
-        }
-        node.broadcast({"processed_data", "avg:" + std::to_string(val)});
-    });
-
-    node.connectTo("127.0.0.1", 5000); // VirtualSensor
-    node.connectTo("127.0.0.1", 5002); // GUI
-    node.connectTo("127.0.0.1", 5003); // WebApp
-
-    node.run();
+    sensor.startGenerating();
+    sensor.run();
 }

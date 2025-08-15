@@ -1,19 +1,25 @@
-#include "EventNode.h"
+#include "AppTemplate.h"
 #include <iostream>
 
+class WebApp : public AppTemplate {
+public:
+    WebApp() : AppTemplate("WebApp", 5003) {}
+
+protected:
+    void handleEvent(const Event& e) override {
+        if (e.type == "processed_data") {
+            std::cout << "[WebApp] 更新网页: " << e.data << "\n";
+        } else if (e.type == "alert") {
+            std::cout << "[WebApp] ⚠️ 警告: " << e.data << "\n";
+        }
+    }
+};
+
 int main() {
-    EventNode node(5003);
+    WebApp web;
+    web.addConnection("127.0.0.1", 5000); // VirtualSensor
+    web.addConnection("127.0.0.1", 5001); // Algorithm
+    web.addConnection("127.0.0.1", 5002); // GUI
 
-    node.onEvent("processed_data", [](const Event& e){
-        std::cout << "[WebApp] 推送浏览器: " << e.data << "\n";
-    });
-    node.onEvent("alert", [](const Event& e){
-        std::cout << "[WebApp] ⚠️ 警告: " << e.data << "\n";
-    });
-
-    node.connectTo("127.0.0.1", 5000); // VirtualSensor
-    node.connectTo("127.0.0.1", 5001); // Algorithm
-    node.connectTo("127.0.0.1", 5002); // GUI
-
-    node.run();
+    web.run();
 }

@@ -1,21 +1,27 @@
-#include "EventNode.h"
+#include "AppTemplate.h"
 #include <iostream>
+#include <thread>
+
+class AlgorithmApp : public AppTemplate {
+public:
+    AlgorithmApp() : AppTemplate("Algorithm", 5001) {}
+
+protected:
+    void handleEvent(const Event& e) override {
+        if (e.type == "raw_data") {
+            std::cout << "[Algorithm] 处理数据: " << e.data << "\n";
+
+            Event processed{"processed_data", e.data + "_processed"};
+            node.broadcast(processed); // 子类内部访问 protected node
+        }
+    }
+};
 
 int main() {
-    EventNode node(5001); // 监听端口5001
+    AlgorithmApp algo;
+    algo.addConnection("127.0.0.1", 5000); // VirtualSensor
+    algo.addConnection("127.0.0.1", 5002); // GUI
+    algo.addConnection("127.0.0.1", 5003); // WebApp
 
-    node.onEvent("sensor_data", [&node](const Event& e){
-        int val = std::stoi(e.data);
-        std::cout << "[Algorithm] 收到数据: " << val << "\n";
-        if (val > 80) {
-            node.broadcast({"alert", "值超过80!"});
-        }
-        node.broadcast({"processed_data", "avg:" + std::to_string(val)});
-    });
-
-    node.connectTo("127.0.0.1", 5000); // VirtualSensor
-    node.connectTo("127.0.0.1", 5002); // GUI
-    node.connectTo("127.0.0.1", 5003); // WebApp
-
-    node.run();
+    algo.run();
 }
