@@ -15,7 +15,7 @@ void VirtualSensor::initialize() {
     std::cout << "[VirtualSensor] Initializing sensor " << sensorId_ << std::endl;
     
     // 连接到其他应用（假设它们运行在默认端口）
-    // connectToPeer("localhost", 20002); // Algorithm
+    connectToPeer("127.0.0.1", 20002); // Algorithm
     // connectToPeer("localhost", 20003); // GUI
     // connectToPeer("localhost", 20004); // WebApp
 }

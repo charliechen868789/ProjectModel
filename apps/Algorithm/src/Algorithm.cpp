@@ -16,7 +16,7 @@ void Algorithm::initialize() {
     });
     
     // 连接到传感器
-    connectToPeer("localhost", 20001);
+    connectToPeer("127.0.0.1", 20001);
 }
 
 void Algorithm::run() {
@@ -53,7 +53,7 @@ void Algorithm::handleSensorData(const std::string& eventType, const std::string
     if (sensorDataBuffer_.size() >= 3) {
         AlgorithmResult result = processData();
         std::string serializedResult = result.SerializeAsString();
-        broadcast("algorithm.result", serializedResult);
+        //broadcast("algorithm.result", serializedResult);
         
         std::cout << "[Algorithm] Processed data - Comfort Index: " << result.comfort_index() 
                   << ", Alert: " << result.alert_level() << std::endl;

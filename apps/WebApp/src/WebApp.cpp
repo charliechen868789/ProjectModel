@@ -25,7 +25,7 @@ void WebApp::initialize() {
     });
     
     // 连接到其他应用
-    connectToPeer("localhost", 20001); // VirtualSensor
+    connectToPeer("127.0.0.1", 20001); // VirtualSensor
     connectToPeer("localhost", 20002); // Algorithm
     
     // 启动HTTP服务器
