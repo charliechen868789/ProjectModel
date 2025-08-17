@@ -6,6 +6,7 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include "event_message.pb.h"
 
 class TcpServer;
@@ -39,5 +40,5 @@ private:
     std::vector<std::unique_ptr<TcpClient>> clients_;
     std::mutex handlersMutex_;
     std::mutex clientsMutex_;
-    bool running_;
+    std::atomic<bool> running_;
 };

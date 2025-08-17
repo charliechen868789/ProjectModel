@@ -1,22 +1,14 @@
 #include "VirtualSensor.h"
-#include <csignal>
 #include <memory>
 
-std::unique_ptr<VirtualSensor> sensorApp;
-
-void signalHandler(int signal) {
-    if (sensorApp) {
-        sensorApp->stop();
-    }
-    exit(0);
-}
-
 int main() {
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
-    
-    sensorApp = std::make_unique<VirtualSensor>();
-    sensorApp->start();
+    try {
+        auto sensorApp = std::make_unique<VirtualSensor>();
+        sensorApp->start();
+    } catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << std::endl;
+        return 1;
+    }
     
     return 0;
 }

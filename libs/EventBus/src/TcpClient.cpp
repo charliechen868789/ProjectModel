@@ -1,4 +1,4 @@
-// TcpClient.cpp
+// TcpClient.cpp - Fixed version with better error handling
 #include "TcpClient.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -66,13 +66,23 @@ void TcpClient::disconnect() {
         sendThread_.join();
     }
     
+    // Clear send queue
+    {
+        std::lock_guard<std::mutex> sendLock(sendMutex_);
+        while (!sendQueue_.empty()) {
+            sendQueue_.pop();
+        }
+    }
+    
     notifyConnectionState(false);
     std::cout << "Disconnected from " << getEndpoint() << std::endl;
 }
 
 void TcpClient::sendMessage(const EventMessage& message) {
     if (!connected_.load()) {
-        throw std::runtime_error("Client not connected");
+        std::cerr << "Warning: Trying to send message while not connected to " 
+                  << getEndpoint() << std::endl;
+        return; // Changed from throw to return to prevent crashes
     }
     
     {
@@ -87,16 +97,20 @@ bool TcpClient::sendMessageAsync(const EventMessage& message, std::chrono::milli
         return false;
     }
     
-    auto future = std::async(std::launch::async, [this, message]() -> bool {
-        try {
-            sendMessage(message);
-            return true;
-        } catch (...) {
-            return false;
-        }
-    });
-    
-    return future.wait_for(timeout) == std::future_status::ready && future.get();
+    try {
+        auto future = std::async(std::launch::async, [this, message]() -> bool {
+            try {
+                sendMessage(message);
+                return true;
+            } catch (...) {
+                return false;
+            }
+        });
+        
+        return future.wait_for(timeout) == std::future_status::ready && future.get();
+    } catch (...) {
+        return false;
+    }
 }
 
 bool TcpClient::connectSocket() {
@@ -125,7 +139,7 @@ bool TcpClient::connectSocket() {
     
     if (result < 0) {
         if (errno != EINPROGRESS) {
-            std::cerr << "Connect failed: " << strerror(errno) << std::endl;
+            std::cerr << "Connect failed immediately: " << strerror(errno) << std::endl;
             closeSocket();
             return false;
         }
@@ -150,7 +164,8 @@ bool TcpClient::connectSocket() {
         int error;
         socklen_t len = sizeof(error);
         if (getsockopt(socket_, SOL_SOCKET, SO_ERROR, &error, &len) < 0 || error != 0) {
-            std::cerr << "Connection failed to " << getEndpoint() << ": " << strerror(error) << std::endl;
+            std::cerr << "Connection failed to " << getEndpoint() << ": " 
+                      << (error ? strerror(error) : "unknown error") << std::endl;
             closeSocket();
             return false;
         }
@@ -171,6 +186,7 @@ bool TcpClient::connectSocket() {
 
 void TcpClient::closeSocket() {
     if (socket_ >= 0) {
+        shutdown(socket_, SHUT_RDWR); // Graceful shutdown
         close(socket_);
         socket_ = -1;
     }
@@ -178,7 +194,11 @@ void TcpClient::closeSocket() {
 
 void TcpClient::notifyConnectionState(bool connected) {
     if (connectionHandler_) {
-        connectionHandler_(connected);
+        try {
+            connectionHandler_(connected);
+        } catch (const std::exception& e) {
+            std::cerr << "Error in connection handler: " << e.what() << std::endl;
+        }
     }
 }
 
@@ -190,28 +210,36 @@ void TcpClient::receiveLoop() {
             
             if (received <= 0) {
                 if (received == 0) {
-                    std::cout << "Server closed connection" << std::endl;
-                } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    std::cerr << "Receive error: " << strerror(errno) << std::endl;
+                    std::cout << "Server " << getEndpoint() << " closed connection" << std::endl;
+                } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    // Timeout, continue
+                    continue;
+                } else {
+                    std::cerr << "Receive error from " << getEndpoint() 
+                              << ": " << strerror(errno) << std::endl;
                 }
                 break;
             }
             
             messageSize = ntohl(messageSize);
             if (messageSize > 10 * 1024 * 1024) { // 10MB limit
-                std::cerr << "Message too large: " << messageSize << std::endl;
+                std::cerr << "Message too large from " << getEndpoint() 
+                          << ": " << messageSize << std::endl;
                 break;
             }
             
             std::vector<char> buffer(messageSize);
             size_t totalReceived = 0;
             
-            while (totalReceived < messageSize && connected_.load()) {
+            while (totalReceived < messageSize && connected_.load() && !shouldStop_.load()) {
                 received = recv(socket_, buffer.data() + totalReceived, 
                               messageSize - totalReceived, 0);
                 if (received <= 0) {
-                    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                        std::cerr << "Receive error: " << strerror(errno) << std::endl;
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        continue; // Timeout, retry
+                    } else {
+                        std::cerr << "Receive error from " << getEndpoint() 
+                                  << ": " << strerror(errno) << std::endl;
                         goto exit_loop;
                     }
                 } else {
@@ -222,20 +250,28 @@ void TcpClient::receiveLoop() {
             EventMessage message;
             if (message.ParseFromArray(buffer.data(), messageSize)) {
                 if (messageHandler_) {
-                    messageHandler_(message);
+                    try {
+                        messageHandler_(message);
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error in message handler: " << e.what() << std::endl;
+                    }
                 }
             } else {
-                std::cerr << "Failed to parse message" << std::endl;
+                std::cerr << "Failed to parse message from " << getEndpoint() << std::endl;
             }
             
         } catch (const std::exception& e) {
-            std::cerr << "Exception in receive loop: " << e.what() << std::endl;
+            std::cerr << "Exception in receive loop for " << getEndpoint() 
+                      << ": " << e.what() << std::endl;
             break;
         }
     }
     
 exit_loop:
-    connected_.store(false);
+    if (connected_.load()) {
+        connected_.store(false);
+        notifyConnectionState(false);
+    }
 }
 
 void TcpClient::sendLoop() {
@@ -245,7 +281,7 @@ void TcpClient::sendLoop() {
         
         {
             std::unique_lock<std::mutex> lock(sendMutex_);
-            sendCondition_.wait(lock, [this]() { 
+            sendCondition_.wait_for(lock, std::chrono::seconds(1), [this]() { 
                 return !sendQueue_.empty() || shouldStop_.load(); 
             });
             
@@ -264,8 +300,9 @@ void TcpClient::sendLoop() {
                 // Send size header
                 ssize_t sent = send(socket_, &messageSize, sizeof(messageSize), MSG_NOSIGNAL);
                 if (sent != sizeof(messageSize)) {
-                    std::cerr << "Failed to send message size" << std::endl;
+                    std::cerr << "Failed to send message size to " << getEndpoint() << std::endl;
                     connected_.store(false);
+                    notifyConnectionState(false);
                     continue;
                 }
                 
@@ -275,9 +312,13 @@ void TcpClient::sendLoop() {
                     sent = send(socket_, serialized.data() + totalSent, 
                               serialized.size() - totalSent, MSG_NOSIGNAL);
                     if (sent <= 0) {
-                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                            std::cerr << "Send error: " << strerror(errno) << std::endl;
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                            continue; // Timeout, retry
+                        } else {
+                            std::cerr << "Send error to " << getEndpoint() 
+                                      << ": " << strerror(errno) << std::endl;
                             connected_.store(false);
+                            notifyConnectionState(false);
                             break;
                         }
                     } else {
@@ -286,8 +327,10 @@ void TcpClient::sendLoop() {
                 }
                 
             } catch (const std::exception& e) {
-                std::cerr << "Exception in send loop: " << e.what() << std::endl;
+                std::cerr << "Exception in send loop for " << getEndpoint() 
+                          << ": " << e.what() << std::endl;
                 connected_.store(false);
+                notifyConnectionState(false);
             }
         }
     }

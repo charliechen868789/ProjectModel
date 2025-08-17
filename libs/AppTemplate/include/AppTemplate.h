@@ -1,7 +1,10 @@
+// AppTemplate.h - Fixed version
 #pragma once
 #include "EventBus.h"
 #include <string>
 #include <memory>
+#include <atomic>
+#include <csignal>
 
 class AppTemplate {
 public:
@@ -23,9 +26,15 @@ public:
 
     void start();
     void stop();
+    
+    bool isRunning() const { return running_.load(); }
 
 protected:
     std::string appName_;
     std::unique_ptr<EventBus> eventBus_;
-    bool running_;
+    std::atomic<bool> running_;
+    
+    // Static signal handling
+    static void signalHandler(int signal);
+    static AppTemplate* currentApp_;
 };
