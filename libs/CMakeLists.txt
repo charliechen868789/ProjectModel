@@ -1,2 +1,3 @@
 add_subdirectory(EventBus)
+add_subdirectory(ConfigManager)
 add_subdirectory(AppTemplate)

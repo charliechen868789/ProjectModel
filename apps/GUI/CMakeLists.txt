@@ -1,43 +1,90 @@
+# CMakeLists.txt for Qt GUI Application
 cmake_minimum_required(VERSION 3.16)
+project(QtEnvironmentMonitor VERSION 1.0.0 LANGUAGES CXX)
 
-# GUI 程序需要 Algorithm 和 VirtualSensor 的 proto 文件
-set(ALGORITHM_PROTO_DIR ${CMAKE_SOURCE_DIR}/apps/Algorithm/proto)
-set(SENSOR_PROTO_DIR ${CMAKE_SOURCE_DIR}/apps/VirtualSensor/proto)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/algorithm_result.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/algorithm_result.pb.h
-    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-    ARGS --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-         --proto_path=${ALGORITHM_PROTO_DIR}
-         ${ALGORITHM_PROTO_DIR}/algorithm_result.proto
-    DEPENDS ${ALGORITHM_PROTO_DIR}/algorithm_result.proto
-    COMMENT "Generating algorithm_result protobuf for GUI"
+# Qt6 packages
+find_package(Qt6 REQUIRED COMPONENTS Core Quick QuickControls2 Network HttpServer)
+
+# Protobuf
+find_package(Protobuf REQUIRED)
+
+
+# 生成 VirtualSensor protobuf
+set(VIRTUALSENSOR_PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../VirtualSensor/proto)
+set(VIRTUALSENSOR_PROTO_FILES
+    ${VIRTUALSENSOR_PROTO_DIR}/sensor_data.proto
 )
 
+set(VIRTUALSENSOR_PROTO_SRCS)
+set(VIRTUALSENSOR_PROTO_HDRS)
+foreach(proto_file ${VIRTUALSENSOR_PROTO_FILES})
+    get_filename_component(proto_name ${proto_file} NAME_WE)
+    list(APPEND VIRTUALSENSOR_PROTO_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.cc)
+    list(APPEND VIRTUALSENSOR_PROTO_HDRS ${CMAKE_CURRENT_BINARY_DIR}/${proto_name}.pb.h)
+endforeach()
+
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sensor_data.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/sensor_data.pb.h
+    OUTPUT ${VIRTUALSENSOR_PROTO_SRCS} ${VIRTUALSENSOR_PROTO_HDRS}
     COMMAND ${Protobuf_PROTOC_EXECUTABLE}
     ARGS --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-         --proto_path=${SENSOR_PROTO_DIR}
-         ${SENSOR_PROTO_DIR}/sensor_data.proto
-    DEPENDS ${SENSOR_PROTO_DIR}/sensor_data.proto
-    COMMENT "Generating sensor_data protobuf for GUI"
+         --proto_path=${VIRTUALSENSOR_PROTO_DIR}
+         ${VIRTUALSENSOR_PROTO_FILES}
+    DEPENDS ${VIRTUALSENSOR_PROTO_FILES}
+    COMMENT "Generating VirtualSensor protobuf files"
 )
 
-add_executable(GUI
+# Create a target to generate protobuf files
+add_custom_target(GenerateVirtualSensorProtobuf ALL
+    DEPENDS ${VIRTUALSENSOR_PROTO_SRCS} ${VIRTUALSENSOR_PROTO_HDRS}
+)
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ 
+    ../../libs/AppTemplate/include
+    ../../libs/EventBus/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/model/
+     ${CMAKE_CURRENT_BINARY_DIR}
+    ${Protobuf_INCLUDE_DIRS})
+
+# Qt GUI Application
+qt6_add_executable(QtEnvironmentMonitor
     src/main.cpp
-    src/GUI.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/algorithm_result.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/sensor_data.pb.cc
+    src/QtGUI.cpp
+    include/QtGUI.h
+    model/DataModel.cpp
+    model/DataModel.h
+    src/LayoutManager.cpp
+    include/LayoutManager.h
+    ${VIRTUALSENSOR_PROTO_SRCS}
 )
 
-target_include_directories(GUI PRIVATE
-    include
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${Protobuf_INCLUDE_DIRS}
+# Make the executable depend on protobuf generation
+add_dependencies(QtEnvironmentMonitor GenerateVirtualSensorProtobuf)
+
+# QML resources
+qt6_add_qml_module(QtEnvironmentMonitor
+    URI EnvironmentMonitor
+    VERSION 1.0
+    QML_FILES
+        qml/main.qml
+        qml/SensorPanel.qml
+        qml/AlgorithmPanel.qml
+        qml/ChartPanel.qml
+        qml/StatusBar.qml
+        qml/DynamicLayout.qml
 )
 
-target_link_libraries(GUI PRIVATE
-    AppTemplate
-    ${Protobuf_LIBRARIES}
+# Keyword-style target_link_libraries
+target_link_libraries(QtEnvironmentMonitor
+    PRIVATE Qt6::Core
+    PRIVATE Qt6::Quick
+    PRIVATE Qt6::QuickControls2
+    PRIVATE Qt6::Network
+    PRIVATE protobuf::libprotobuf
+    PRIVATE EventBus
+    PRIVATE AppTemplate
 )

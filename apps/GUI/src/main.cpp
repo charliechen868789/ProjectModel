@@ -1,22 +1,39 @@
-#include "GUI.h"
+// main.cpp for Qt GUI
+#include "QtGUI.h"
+#include <QGuiApplication>
+#include <QCoreApplication> 
+#include <QQmlApplicationEngine>
+#include <QIcon>
 #include <csignal>
 #include <memory>
 
-std::unique_ptr<GUI> guiApp;
+std::unique_ptr<QtGUI> qtGuiApp;
 
-void signalHandler(int signal) {
-    if (guiApp) {
-        guiApp->stop();
+void signalHandler(int) {
+    if (qtGuiApp) {
+        qtGuiApp->stop();
     }
-    exit(0);
+    QCoreApplication::quit();
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    QGuiApplication  app(argc, argv);
+    
+    app.setApplicationName("Environment Monitor");
+    app.setApplicationVersion("1.0");
+    app.setOrganizationName("Environmental Solutions");
+    
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
     
-    guiApp = std::make_unique<GUI>();
-    guiApp->start();
+    qtGuiApp = std::make_unique<QtGUI>(&app);
+    qtGuiApp->start();
     
-    return 0;
+    int result = app.exec();
+    
+    if (qtGuiApp) {
+        qtGuiApp->stop();
+    }
+    
+    return result;
 }

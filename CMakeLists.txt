@@ -13,9 +13,14 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)   # if you use Qt resource files
+set(CMAKE_AUTOUIC ON)   # if you use .ui files
+
 # 包含子目录
 add_subdirectory(libs/EventBus)
 add_subdirectory(libs/AppTemplate)
+add_subdirectory(libs/ConfigManager)
 add_subdirectory(apps/VirtualSensor)
 add_subdirectory(apps/Algorithm)
 add_subdirectory(apps/GUI)
