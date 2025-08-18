@@ -37,8 +37,8 @@ void QtGUI::initialize() {
     
     // Connect to other applications
     connectToPeer("127.0.0.1", 20001); // VirtualSensor
-    connectToPeer("127.0.0.1", 20002); // Algorithm
-    connectToPeer("127.0.0.1", 20004); // WebHandler
+    //connectToPeer("127.0.0.1", 20002); // Algorithm
+    //connectToPeer("127.0.0.1", 20004); // WebHandler
     
     setupQmlEngine();
     
@@ -52,7 +52,7 @@ void QtGUI::run() {
     std::cout << "[QtGUI] Starting Qt GUI..." << std::endl;
     
     if (engine_) {
-        engine_->load(QUrl(QStringLiteral("qrc:/EnvironmentMonitor/qt_gui/qml/main.qml")));
+        engine_->load(QUrl(QStringLiteral("qrc:/EnvironmentMonitor/qml/main.qml")));
         
         if (engine_->rootObjects().isEmpty()) {
             std::cerr << "[QtGUI] Failed to load QML" << std::endl;
@@ -92,6 +92,9 @@ void QtGUI::setupQmlEngine() {
 }
 
 void QtGUI::handleSensorData(const std::string& eventType, const std::string& data) {
+
+    std::cout << "[GUI] Received sensor data from " << std::endl;
+
     SensorData sensorData;
     if (!sensorData.ParseFromString(data)) {
         return;
@@ -106,19 +109,19 @@ void QtGUI::handleSensorData(const std::string& eventType, const std::string& da
 }
 
 void QtGUI::handleAlgorithmResult(const std::string& eventType, const std::string& data) {
-    //AlgorithmResult result;
-    //if (!result.ParseFromString(data)) {
-    //    return;
-    //}
+    AlgorithmResult result;
+    if (!result.ParseFromString(data)) {
+        return;
+    }
     
-    //QMetaObject::invokeMethod(dataModel_, "updateAlgorithmResult", Qt::QueuedConnection,
-    //    Q_ARG(QString, QString::fromStdString(result.result_id())),
-    //    Q_ARG(double, result.comfort_index()),
-    //    Q_ARG(QString, QString::fromStdString(result.alert_level())),
-    //    Q_ARG(QString, QString::fromStdString(result.recommendation())),
-    //    Q_ARG(double, result.avg_temperature()),
-    //    Q_ARG(double, result.avg_humidity()),
-    //    Q_ARG(double, result.avg_pressure()));
+    QMetaObject::invokeMethod(dataModel_, "updateAlgorithmResult", Qt::QueuedConnection,
+        Q_ARG(QString, QString::fromStdString(result.result_id())),
+        Q_ARG(double, result.comfort_index()),
+        Q_ARG(QString, QString::fromStdString(result.alert_level())),
+        Q_ARG(QString, QString::fromStdString(result.recommendation())),
+        Q_ARG(double, result.avg_temperature()),
+        Q_ARG(double, result.avg_humidity()),
+        Q_ARG(double, result.avg_pressure()));
 }
 
 void QtGUI::handleLayoutUpdate(const std::string& eventType, const std::string& data) {

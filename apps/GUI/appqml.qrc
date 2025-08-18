@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/AlgorithmPanel.qml</file>
+        <file>qml/ChartPanel.qml</file>
+        <file>qml/DynamicLayout.qml</file>
+        <file>qml/SensorPanel.qml</file>
+        <file>qml/StatusBar.qml</file>
+    </qresource>
+</RCC>

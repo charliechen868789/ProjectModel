@@ -51,6 +51,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../
     ${Protobuf_INCLUDE_DIRS})
 
 # Qt GUI Application
+qt_add_resources(GUI_RESOURCES appqml.qrc)
 qt6_add_executable(QtEnvironmentMonitor
     src/main.cpp
     src/QtGUI.cpp
@@ -59,13 +60,16 @@ qt6_add_executable(QtEnvironmentMonitor
     model/DataModel.h
     src/LayoutManager.cpp
     include/LayoutManager.h
+    ${GUI_RESOURCES}
     ${VIRTUALSENSOR_PROTO_SRCS}
 )
 
 # Make the executable depend on protobuf generation
 add_dependencies(QtEnvironmentMonitor GenerateVirtualSensorProtobuf)
 
-# QML resources
+# ----------------------
+# Qt QML Module
+# ----------------------
 qt6_add_qml_module(QtEnvironmentMonitor
     URI EnvironmentMonitor
     VERSION 1.0
