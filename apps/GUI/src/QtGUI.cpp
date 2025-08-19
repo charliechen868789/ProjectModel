@@ -109,6 +109,7 @@ void QtGUI::handleSensorData(const std::string& eventType, const std::string& da
 }
 
 void QtGUI::handleAlgorithmResult(const std::string& eventType, const std::string& data) {
+    /*
     AlgorithmResult result;
     if (!result.ParseFromString(data)) {
         return;
@@ -122,6 +123,7 @@ void QtGUI::handleAlgorithmResult(const std::string& eventType, const std::strin
         Q_ARG(double, result.avg_temperature()),
         Q_ARG(double, result.avg_humidity()),
         Q_ARG(double, result.avg_pressure()));
+    */
 }
 
 void QtGUI::handleLayoutUpdate(const std::string& eventType, const std::string& data) {
