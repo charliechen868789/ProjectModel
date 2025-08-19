@@ -31,7 +31,7 @@ namespace webapp
         
         // Connect to other applications
         connectToPeer("127.0.0.1", 20001); // VirtualSensor
-        connectToPeer("127.0.0.1", 20002); // Algorithm
+        //connectToPeer("127.0.0.1", 20002); // Algorithm
         
         // Start HTTP server for URL request handling only
         httpServer_ = std::make_unique<HttpServer>(8081, 
@@ -58,19 +58,28 @@ namespace webapp
         }
     }
 
-    void WebApp::handleSensorData(const std::string& eventType, const std::string& data) {
+    void WebApp::handleSensorData(const std::string& eventType, const std::string& data)
+    {
         SensorData sensorData;
         if (!sensorData.ParseFromString(data)) {
-            std::cerr << "[WebApp] Failed to parse sensor data" << std::endl;
+            std::cerr << "[Algorithm] Failed to parse sensor data" << std::endl;
             return;
         }
+        std::cout << "[WebApp] Received SensorData: "
+            << "T=" << sensorData.temperature()
+            << " H=" << sensorData.humidity()
+            << " P=" << sensorData.pressure()
+            << std::endl;
         
-        std::lock_guard<std::mutex> lock(dataMutex_);
-        latestSensorData_ = sensorData;
-        hasData_ = true;
+        {
+            std::lock_guard<std::mutex> lock(dataMutex_);
+            latestSensorData_ = sensorData;
+            hasData_ = true;
+        }
     }
 
-    void WebApp::handleAlgorithmResult(const std::string& eventType, const std::string& data) {
+    void WebApp::handleAlgorithmResult(const std::string& eventType, const std::string& data)
+    {
         AlgorithmResult result;
         if (!result.ParseFromString(data)) {
             std::cerr << "[WebApp] Failed to parse algorithm result" << std::endl;

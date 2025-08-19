@@ -4,21 +4,25 @@
 #include <thread>
 #include <atomic>
 
-class VirtualSensor : public AppTemplate {
-public:
-    VirtualSensor();
-    ~VirtualSensor() override;
+namespace sensor
+{
+    class VirtualSensor : public AppTemplate
+    {
+    public:
+        VirtualSensor();
+        ~VirtualSensor() override;
 
-protected:
-    void initialize() override;
-    void run() override;
-    void cleanup() override;
+    protected:
+        void initialize() override;
+        void run() override;
+        void cleanup() override;
 
-private:
-    void generateSensorData();
-    SensorData createRandomSensorData();
+    private:
+        void generateSensorData();
+        SensorData createRandomSensorData();
 
-    std::thread sensorThread_;
-    std::atomic<bool> generating_;
-    std::string sensorId_;
-};
+        std::thread sensorThread_;
+        std::atomic<bool> generating_;
+        std::string sensorId_;
+    };
+}

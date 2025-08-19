@@ -79,6 +79,7 @@ void TcpClient::disconnect() {
 }
 
 void TcpClient::sendMessage(const EventMessage& message) {
+    std::cout << "Queued message, sendQueue size: " << sendQueue_.size() << std::endl;
     if (!connected_.load()) {
         std::cerr << "Warning: Trying to send message while not connected to " 
                   << getEndpoint() << std::endl;
@@ -275,6 +276,7 @@ exit_loop:
 }
 
 void TcpClient::sendLoop() {
+    std::cout << "sendLoop iteration, queue size: " << sendQueue_.size() << std::endl;
     while (!shouldStop_.load()) {
         EventMessage message;
         bool hasMessage = false;

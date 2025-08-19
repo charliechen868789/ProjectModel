@@ -38,6 +38,12 @@ void Algorithm::handleSensorData(const std::string& eventType, const std::string
         return;
     }
     
+    std::cout << "[Algorithm] Received SensorData: "
+            << "T=" << sensorData.temperature()
+            << " H=" << sensorData.humidity()
+            << " P=" << sensorData.pressure()
+            << std::endl;
+
     std::lock_guard<std::mutex> lock(bufferMutex_);
     
     // 添加到缓冲区
